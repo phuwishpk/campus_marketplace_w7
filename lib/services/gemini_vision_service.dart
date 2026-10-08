@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/listing_draft.dart';
 
 class GeminiVisionService {
-  static const _model = 'gemini-1.5-flash';
+  static const _model = 'gemini-3.5-flash-lite';
   static const _baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
   static const _maxRetries = 3;
 

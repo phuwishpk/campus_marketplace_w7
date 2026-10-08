@@ -172,7 +172,17 @@ dart run build_runner build --delete-conflicting-outputs
 capture หน้าจอผลลัพธ์คำสั่ง `dart run build_runner build` จากขั้นตอนที่ 3.2 ที่แสดงว่าสร้างไฟล์สำเร็จ (ไม่มี Error เรื่อง Class ชื่อซ้ำ) จากนั้นเปิดไฟล์ main.dart ที่แก้ตามขั้นตอนที่ 3.3 โดย ยังไม่ต้องรันแอปในจุดนี้ เพราะ VS Code จะขีดเส้นสีแดงใต้ FavoritesRepositoryDrift และ ListingDraftRepositoryDrift (ยังไม่มี Class จริง จะเขียน Class นี้ในส่วนที่ 4-5) และถ้าสั่งรันตอนนี้แอปจะ Error ทันทีเพราะคอมไพล์ไม่ผ่าน ถือเป็นเรื่องปกติ — จะกลับมารันแอปได้จริงอีกครั้งหลังทำ Checkpoint 4.1 และ 5.1 เสร็จ
 
 ```text
-บันทึกผลลัพธ์ที่นี่
+Building package executable... (1.0s)      (1.1s)      (1.2s)      (1.3s)      (1.4s)      (1.5s)      (1.6s)      (1.7s)      (1.8s)      (1.9s)      (2.0s)      (2.1s)      (2.2s)      (2.3s)      (2.4s)      (2.5s)      
+Built build_runner:build_runner.
+  1s compiling builders/aot
+  ...
+  0s drift_dev on 84 inputs; lib/database/app_database.dart
+  2s drift_dev on 84 inputs: 1 output; lib/database/tables.dart
+  5s drift_dev on 84 inputs: 3 output; spent 3s analyzing; lib/models/cart_model.dart
+  5s drift_dev on 84 inputs: 21 skipped, 41 output, 22 no-op; spent 3s analyzing
+  0s source_gen:combining_builder on 42 inputs; lib/database/app_database.dart
+  0s source_gen:combining_builder on 42 inputs: 21 skipped, 1 output, 20 no-op
+  Built with build_runner/aot in 24s; wrote 42 outputs.
 ```
 
 ---

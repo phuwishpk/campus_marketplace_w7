@@ -33,7 +33,10 @@ class _MainScaffoldState extends State<MainScaffold> {
         favoritesRepository: widget.favoritesRepository,
       ),
       SellItemPage(draftRepository: widget.draftRepository),
-      FavoritesPage(repository: widget.favoritesRepository),
+      FavoritesPage(
+        key: UniqueKey(), // บังคับให้โหลดข้อมูลใหม่ทุกครั้งที่สลับ Tab
+        repository: widget.favoritesRepository,
+      ),
     ];
 
     return Scaffold(

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../database/app_database.dart';
 import '../repositories/listing_draft_repository.dart';
@@ -58,7 +59,15 @@ class _MyDraftsPageState extends State<MyDraftsPage> {
             itemBuilder: (context, index) {
               final draft = drafts[index];
               return ListTile(
-                leading: const Icon(Icons.article_outlined),
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(
+                    File(draft.imagePath),
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                  ),
+                ),
                 title: Text(draft.title),
                 subtitle: Text(
                   '${draft.category} • แก้ไขล่าสุด: ${_formatDate(draft.updatedAt)}',
