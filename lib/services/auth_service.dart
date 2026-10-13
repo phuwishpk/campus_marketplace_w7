@@ -1,0 +1,112 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
+class AuthService {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  bool _googleReady = false;
+
+  // ดึงผู้ใช้ปัจจุบัน
+  User? get currentUser => _auth.currentUser;
+
+  // Stream ฟังสถานะการล็อกอิน
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  // แปลง FirebaseAuthException code เป็นภาษาไทย
+  String _translateErrorCode(String code) {
+    switch (code) {
+      case 'email-already-in-use':
+        return 'อีเมลนี้ถูกใช้งานแล้วในระบบ';
+      case 'invalid-email':
+        return 'รูปแบบอีเมลไม่ถูกต้อง';
+      case 'weak-password':
+        return 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร';
+      case 'user-not-found':
+        return 'ไม่พบบัญชีผู้ใช้นี้ในระบบ';
+      case 'wrong-password':
+        return 'รหัสผ่านไม่ถูกต้อง';
+      case 'invalid-credential':
+        return 'ข้อมูลยืนยันตัวตนไม่ถูกต้องหรือหมดอายุ กรุณาลองเข้าสู่ระบบใหม่';
+      case 'user-disabled':
+        return 'บัญชีผู้ใช้นี้ถูกระงับการใช้งาน';
+      case 'too-many-requests':
+        return 'พยายามเข้าสู่ระบบมากเกินไป กรุณารอสักครู่แล้วลองใหม่';
+      case 'network-request-failed':
+        return 'การเชื่อมต่อเครือข่ายล้มเหลว กรุณาตรวจสอบอินเทอร์เน็ต';
+      case 'operation-not-allowed':
+        return 'ระบบยังไม่เปิดใช้งานวิธีเข้าสู่ระบบนี้';
+      default:
+        return 'เกิดข้อผิดพลาด: $code กรุณาลองใหม่อีกครั้ง';
+    }
+  }
+
+  // สมัครสมาชิกด้วย Email & Password
+  Future<void> signUp({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_translateErrorCode(e.code));
+    } catch (e) {
+      throw Exception('เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่');
+    }
+  }
+
+  // เข้าสู่ระบบด้วย Email & Password
+  Future<void> signIn({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_translateErrorCode(e.code));
+    } catch (e) {
+      throw Exception('เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่');
+    }
+  }
+
+  // ออกจากระบบ
+  Future<void> signOut() async {
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
+    await _auth.signOut();
+  }
+
+  // เตรียม GoogleSignIn ให้พร้อม
+  Future<void> _ensureGoogleReady() async {
+    if (_googleReady) return;
+    await _googleSignIn.initialize();
+    _googleReady = true;
+  }
+
+  // เข้าสู่ระบบด้วย Google
+  Future<void> signInWithGoogle() async {
+    try {
+      await _ensureGoogleReady();
+
+      final googleUser = await _googleSignIn.authenticate();
+      final idToken = googleUser.authentication.idToken;
+      final authorization = await googleUser.authorizationClient
+          .authorizationForScopes(['email']);
+
+      final credential = GoogleAuthProvider.credential(
+        idToken: idToken,
+        accessToken: authorization?.accessToken,
+      );
+
+      await _auth.signInWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_translateErrorCode(e.code));
+    }
+  }
+}
