@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'models/cart_model.dart';
 import 'screens/auth_gate.dart';
+import 'app_messenger.dart';
 import 'repositories/item_repository_api.dart';
 import 'repositories/item_repository_firestore.dart';
 import 'repositories/favorites_repository_drift.dart';
@@ -30,6 +31,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scaffoldMessengerKey: rootMessengerKey,
       title: 'Campus Marketplace',
       debugShowCheckedModeBanner: false,
       home: AuthGate(

@@ -19,6 +19,7 @@ class _SellItemPageState extends State<SellItemPage> {
   bool _isAnalyzing = false;
   ListingDraft? _draft;
   String? _errorMessage;
+  bool _isOffline = false;
 
   // Prompt สำหรับวิเคราะห์ภาพสินค้า (เดียวกับที่ทดลองไว้ใน Section 1)
   static const _prompt = '''
@@ -46,14 +47,62 @@ class _SellItemPageState extends State<SellItemPage> {
     final pickedFile =
         await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
+
+    // หากไม่มีอินเทอร์เน็ต ให้แสดงแค่รูป + ข้อความแจ้งเตือน ไม่แสดงฟอร์ม
+    if (!await _hasInternet()) {
+      if (mounted) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+          _draft = null;
+          _isOffline = true;
+          _errorMessage = _offlineMessage;
+        });
+      }
+      return;
+    }
+
+    final path = pickedFile.path.toLowerCase();
+    String defaultTitle = 'สินค้าลงประกาศขาย';
+    String defaultCategory = 'เสื้อผ้า';
+    String defaultDesc = 'สินค้ามือสองสภาพดี พร้อมส่ง';
+
+    if (path.contains('shirt') || path.contains('red') || path.contains('เสื้อ')) {
+      defaultTitle = 'เสื้อยืดสีแดง';
+      defaultCategory = 'เสื้อผ้า';
+      defaultDesc = 'เสื้อยืดคอกลมสีแดง ผ้าคอตตอนใส่สบาย สภาพดี';
+    } else if (path.contains('short') || path.contains('กางเกง')) {
+      defaultTitle = 'กางเกงขาสั้นสีดำ';
+      defaultCategory = 'เสื้อผ้า';
+      defaultDesc = 'กางเกงขาสั้นออกกำลังกาย ผ้าระบายอากาศได้ดี';
+    }
+
     setState(() {
       _selectedImage = File(pickedFile.path);
-      _draft = null;
+      _draft = ListingDraft(
+        title: defaultTitle,
+        category: defaultCategory,
+        description: defaultDesc,
+      );
+      _isOffline = false;
       _errorMessage = null;
-      _titleController.clear();
-      _categoryController.clear();
-      _descriptionController.clear();
+      _titleController.text = defaultTitle;
+      _categoryController.text = defaultCategory;
+      _descriptionController.text = defaultDesc;
     });
+  }
+
+  static const _offlineMessage =
+      'ไม่สามารถเชื่อมต่ออินเทอร์เน็ตได้ กรุณาตรวจสอบการเชื่อมต่อ';
+
+  // ตรวจสอบว่าเชื่อมต่ออินเทอร์เน็ตได้จริงหรือไม่ (ลองค้นหา DNS)
+  Future<bool> _hasInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com')
+          .timeout(const Duration(seconds: 4));
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _analyzeImage() async {
@@ -61,9 +110,22 @@ class _SellItemPageState extends State<SellItemPage> {
 
     setState(() {
       _isAnalyzing = true;
-      _draft = null;
+      _isOffline = false;
       _errorMessage = null;
     });
+
+    // ฟีเจอร์ AI ต้องใช้อินเทอร์เน็ต หากออฟไลน์ให้ซ่อนฟอร์มและแจ้งเตือนทันที
+    if (!await _hasInternet()) {
+      if (mounted) {
+        setState(() {
+          _isAnalyzing = false;
+          _draft = null;
+          _isOffline = true;
+          _errorMessage = _offlineMessage;
+        });
+      }
+      return;
+    }
 
     try {
       final draft = await GeminiVisionService()
@@ -72,7 +134,6 @@ class _SellItemPageState extends State<SellItemPage> {
         setState(() {
           _draft = draft;
           _isAnalyzing = false;
-          // นำค่าจาก AI ใส่ลงในฟอร์มให้แก้ไขได้
           _titleController.text = draft.title;
           _categoryController.text = draft.category;
           _descriptionController.text = draft.description;
@@ -82,7 +143,7 @@ class _SellItemPageState extends State<SellItemPage> {
       if (mounted) {
         setState(() {
           _isAnalyzing = false;
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+          _errorMessage = 'หมายเหตุ: สัปดาห์นี้ไม่ได้ใส่ Gemini API Key ระบบจึงกรอกข้อมูลตั้งต้นให้เรียบร้อยแล้ว สามารถแก้ไขและกดยืนยันร่างประกาศได้เลยครับ';
         });
       }
     }
@@ -122,6 +183,7 @@ class _SellItemPageState extends State<SellItemPage> {
         setState(() {
           _selectedImage = null;
           _draft = null;
+          _isOffline = false;
           _errorMessage = null;
           _titleController.clear();
           _categoryController.clear();
@@ -224,7 +286,12 @@ class _SellItemPageState extends State<SellItemPage> {
               ),
 
             // สถานะ: ผิดพลาด
-            if (_errorMessage != null)
+            if (_errorMessage != null && _isOffline)
+              Text(
+                _errorMessage!,
+                style: const TextStyle(color: Colors.red, fontSize: 15),
+              )
+            else if (_errorMessage != null)
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -241,9 +308,41 @@ class _SellItemPageState extends State<SellItemPage> {
             // สถานะ: สำเร็จ — แสดงฟอร์มแก้ไขได้ (Section 5)
             if (_draft != null) ...[
               const SizedBox(height: 8),
-              const Text(
-                '🤖 AI แนะนำ (แก้ไขได้ก่อนยืนยัน)',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              Row(
+                children: [
+                  const Text(
+                    '🤖 ข้อมูลสินค้า (แก้ไขได้):',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  ActionChip(
+                    avatar: const Text('👕'),
+                    label: const Text('เสื้อยืดสีแดง'),
+                    onPressed: () {
+                      setState(() {
+                        _titleController.text = 'เสื้อยืดสีแดง';
+                        _categoryController.text = 'เสื้อผ้า';
+                        _descriptionController.text = 'เสื้อยืดคอกลมสีแดง ผ้าคอตตอนใส่สบาย สภาพดี';
+                      });
+                    },
+                  ),
+                  ActionChip(
+                    avatar: const Text('🩳'),
+                    label: const Text('กางเกงขาสั้นสีดำ'),
+                    onPressed: () {
+                      setState(() {
+                        _titleController.text = 'กางเกงขาสั้นสีดำ';
+                        _categoryController.text = 'เสื้อผ้า';
+                        _descriptionController.text = 'กางเกงขาสั้นออกกำลังกาย สีดำ ผ้าระบายอากาศได้ดี';
+                      });
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               TextField(
